@@ -1,0 +1,27 @@
+# .coderev.yaml — coderev configuration (optional)
+# Copy this file to .coderev.yaml in the root of your repo.
+
+# Bedrock inference profile ID. Defaults to Claude 3.5 Haiku.
+# Use the "us." prefix for cross-region inference profiles.
+model: us.anthropic.claude-3-5-haiku-20241022-v1:0
+
+# Areas to focus on. Omit to let the model decide what's worth flagging.
+focus:
+  - bugs
+  - security
+  - performance
+
+# Glob patterns for files to skip. Supports ** for recursive matching.
+ignore:
+  - "*.lock"
+  - "*.sum"
+  - "vendor/**"
+  - "*_test.go"
+  - "*.pb.go"
+
+# Per-language instructions injected into the review prompt.
+language_hints:
+  .go: "Follow standard Go error handling patterns. Prefer explicit errors over panics."
+  .ts: "Prefer strict TypeScript types. Avoid 'any'."
+  .py: "Use type hints. Follow PEP 8. Flag missing error handling."
+  .js: "Flag uses of var, loose equality (==), and missing error handling."

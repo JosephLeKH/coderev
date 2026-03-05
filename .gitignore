@@ -1,0 +1,21 @@
+# Build output
+coderev
+
+# Go test artifacts
+*.test
+*.out
+coverage.html
+
+# macOS
+.DS_Store
+
+# Internal / private files
+CLAUDE.md
+SESSION.md
+project_spec.md
+.claude/
+
+# Node (leftover from accidental npm init)
+node_modules/
+package.json
+package-lock.json
