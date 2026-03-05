@@ -51,8 +51,6 @@ var severityColor = map[string]string{
 	"BUG":         "\033[31m", // red
 	"SECURITY":    "\033[35m", // magenta
 	"PERFORMANCE": "\033[33m", // yellow
-	"STYLE":       "\033[36m", // cyan
-	"NITPICK":     "\033[37m", // white/gray
 }
 
 const colorReset = "\033[0m"

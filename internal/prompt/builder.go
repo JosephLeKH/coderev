@@ -14,7 +14,7 @@ import (
 //
 //	[SEVERITY] L<line> <description>
 //
-// Supported severities: BUG, SECURITY, PERFORMANCE, STYLE, NITPICK.
+// Supported severities: BUG, SECURITY, PERFORMANCE.
 func BuildPrompt(chunk git.FileChunk, cfg *config.Config) string {
 	var sb strings.Builder
 
@@ -22,16 +22,16 @@ func BuildPrompt(chunk git.FileChunk, cfg *config.Config) string {
 
 	sb.WriteString("Output each finding on its own line in exactly this format:\n")
 	sb.WriteString("  [SEVERITY] L<line_number> <short description>\n\n")
-	sb.WriteString("Valid severities: [BUG] [SECURITY] [PERFORMANCE] [STYLE] [NITPICK]\n\n")
+	sb.WriteString("Valid severities: [BUG] [SECURITY] [PERFORMANCE]\n\n")
 	sb.WriteString("Rules:\n")
-	sb.WriteString("- Only report a finding if you are confident it is a problem. If you are unsure, say nothing.\n")
-	sb.WriteString("- Do not flag improvements. If a change adds documentation, improves naming, removes dead code,\n")
-	sb.WriteString("  or is clearly a cleanup, do not report it — even as NITPICK.\n")
-	sb.WriteString("- Do not speculate about intent. If a change could be correct or incorrect depending on context\n")
-	sb.WriteString("  you do not have, say nothing.\n")
-	sb.WriteString("- Do not describe what the diff does. Only report actual defects.\n")
+	sb.WriteString("- Only report a DEFECT: a bug, a security hole, a correctness issue, or a dangerous pattern.\n")
+	sb.WriteString("- Do NOT report suggestions, preferences, style opinions, or ways the code could be improved.\n")
+	sb.WriteString("- Do NOT report anything about removed code unless the removal itself introduces a defect.\n")
+	sb.WriteString("- Do NOT report code that was added if it is correct and works — even if you'd write it differently.\n")
+	sb.WriteString("- Do NOT speculate. If you cannot prove a defect from the diff alone, say nothing.\n")
+	sb.WriteString("- Do NOT describe what the diff does. Only report defects.\n")
 	sb.WriteString("- Use the line number of the added (+) or removed (-) line in the diff.\n")
-	sb.WriteString("- If there are no issues, output nothing.\n\n")
+	sb.WriteString("- If there are no defects, output nothing.\n\n")
 
 	if len(cfg.Focus) > 0 {
 		sb.WriteString(fmt.Sprintf("Focus on: %s\n\n", strings.Join(cfg.Focus, ", ")))
