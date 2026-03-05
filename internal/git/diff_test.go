@@ -1,11 +1,75 @@
 package git
 
 import (
+	"os"
+	"os/exec"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// ---- GetDiff integration tests ----
+
+// initGitRepo creates a minimal git repo in dir with a single initial commit.
+func initGitRepo(t *testing.T, dir string) {
+	t.Helper()
+	run := func(args ...string) {
+		t.Helper()
+		cmd := exec.Command("git", args...)
+		cmd.Dir = dir
+		out, err := cmd.CombinedOutput()
+		require.NoError(t, err, "git %v: %s", args, out)
+	}
+	run("init")
+	run("config", "user.email", "test@example.com")
+	run("config", "user.name", "Test")
+	// Create an initial commit so HEAD exists.
+	initial := filepath.Join(dir, "README.md")
+	require.NoError(t, os.WriteFile(initial, []byte("# repo\n"), 0o644))
+	run("add", "README.md")
+	run("commit", "-m", "init")
+}
+
+func TestGetDiff_HappyPath(t *testing.T) {
+	dir := t.TempDir()
+	initGitRepo(t, dir)
+
+	// Stage a new file.
+	f := filepath.Join(dir, "main.go")
+	require.NoError(t, os.WriteFile(f, []byte("package main\n"), 0o644))
+	cmd := exec.Command("git", "add", "main.go")
+	cmd.Dir = dir
+	require.NoError(t, cmd.Run())
+
+	t.Chdir(dir)
+
+	chunks, err := GetDiff("") // staged diff
+	require.NoError(t, err)
+	require.NotEmpty(t, chunks)
+	assert.Equal(t, "main.go", chunks[0].Filename)
+	assert.Contains(t, chunks[0].Content, "package main")
+}
+
+func TestGetDiff_NothingToReview(t *testing.T) {
+	dir := t.TempDir()
+	initGitRepo(t, dir)
+
+	t.Chdir(dir)
+
+	_, err := GetDiff("") // no staged changes
+	assert.ErrorIs(t, err, ErrNothingToReview)
+}
+
+func TestGetDiff_NotGitRepo(t *testing.T) {
+	dir := t.TempDir() // plain directory, no .git
+
+	t.Chdir(dir)
+
+	_, err := GetDiff("")
+	assert.ErrorIs(t, err, ErrNotGitRepo)
+}
 
 func TestParseDiff_SingleFile(t *testing.T) {
 	input := `diff --git a/main.go b/main.go

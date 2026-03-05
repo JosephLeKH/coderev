@@ -82,5 +82,28 @@ func TestRunReview_RawResponseCaptured(t *testing.T) {
 	assert.Contains(t, results[0].Raw, "[BUG]")
 }
 
+// blockingClient blocks until the context is cancelled, then returns ctx.Err().
+type blockingClient struct{}
+
+func (b *blockingClient) ReviewFile(ctx context.Context, _ string, _ func(string)) error {
+	<-ctx.Done()
+	return ctx.Err()
+}
+
+func TestRunReview_ContextCancellation(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+
+	chunks := []git.FileChunk{
+		{Filename: "slow.go", Content: "+x := 1"},
+	}
+
+	// Cancel after goroutine has started.
+	go func() { cancel() }()
+
+	_, err := RunReview(ctx, chunks, &config.Config{}, &blockingClient{})
+	assert.Error(t, err)
+	assert.ErrorIs(t, err, context.Canceled)
+}
+
 // Ensure RunReview satisfies the expected signature with the output package's types.
 var _ []output.FileResult = ([]output.FileResult)(nil)

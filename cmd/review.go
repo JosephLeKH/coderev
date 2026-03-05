@@ -10,6 +10,7 @@ import (
 	"github.com/JosephLeKH/coderev/internal/bedrock"
 	"github.com/JosephLeKH/coderev/internal/config"
 	"github.com/JosephLeKH/coderev/internal/git"
+	"github.com/JosephLeKH/coderev/internal/github"
 	"github.com/JosephLeKH/coderev/internal/output"
 	"github.com/JosephLeKH/coderev/internal/reviewer"
 	"github.com/spf13/cobra"
@@ -20,6 +21,7 @@ var (
 	flagJSON   bool
 	flagMock   bool
 	flagRegion string
+	flagPost   bool
 )
 
 var reviewCmd = &cobra.Command{
@@ -33,6 +35,7 @@ func init() {
 	reviewCmd.Flags().BoolVar(&flagJSON, "json", false, "Output results as JSON")
 	reviewCmd.Flags().BoolVar(&flagMock, "mock", false, "Use mock Bedrock client (for testing without AWS credentials)")
 	reviewCmd.Flags().StringVar(&flagRegion, "region", "", "AWS region override (e.g. us-west-2)")
+	reviewCmd.Flags().BoolVar(&flagPost, "post", false, "Post review comments to the open GitHub PR (requires GITHUB_TOKEN)")
 	rootCmd.AddCommand(reviewCmd)
 }
 
@@ -103,6 +106,26 @@ func runReview(cmd *cobra.Command, args []string) error {
 		fmt.Println(out)
 	} else {
 		fmt.Print(output.FormatTerminal(results))
+	}
+
+	if flagPost {
+		fmt.Fprintln(os.Stderr, "Posting review to GitHub PR...")
+		if err := github.PostReview(ctx, results, chunks); err != nil {
+			if errors.Is(err, github.ErrNoPR) {
+				fmt.Fprintln(os.Stderr, "No open PR found for current branch — skipping GitHub post.")
+			} else {
+				return fmt.Errorf("posting GitHub review: %w", err)
+			}
+		} else {
+			fmt.Fprintln(os.Stderr, "Review posted successfully.")
+		}
+	}
+
+	// Exit 1 if any issues were found — useful for git hooks and CI pipelines.
+	for _, r := range results {
+		if len(r.Comments) > 0 {
+			os.Exit(1)
+		}
 	}
 
 	return nil

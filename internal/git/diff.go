@@ -34,6 +34,12 @@ func (fc FileChunk) EstimatedTokens() int {
 // GetDiff shells out to git diff and returns parsed file chunks.
 // If target is empty, diffs staged changes; otherwise diffs against the target revision.
 func GetDiff(target string) ([]FileChunk, error) {
+	// Pre-check: verify we are inside a git working tree before running diff.
+	if out, err := exec.Command("git", "rev-parse", "--is-inside-work-tree").Output(); err != nil ||
+		strings.TrimSpace(string(out)) != "true" {
+		return nil, ErrNotGitRepo
+	}
+
 	args := []string{"diff"}
 	if target == "" {
 		args = append(args, "--staged")

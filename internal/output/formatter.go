@@ -59,6 +59,7 @@ const colorReset = "\033[0m"
 func FormatTerminal(results []FileResult) string {
 	var sb strings.Builder
 	totalIssues := 0
+	severityCounts := make(map[string]int)
 
 	for _, r := range results {
 		sb.WriteString(fmt.Sprintf("\n\033[1m%s\033[0m\n", r.File))
@@ -74,10 +75,29 @@ func FormatTerminal(results []FileResult) string {
 			sb.WriteString(fmt.Sprintf("  %s[%s]%s L%d %s\n",
 				color, c.Severity, colorReset, c.Line, c.Message))
 			totalIssues++
+			severityCounts[c.Severity]++
 		}
 	}
 
-	sb.WriteString(fmt.Sprintf("\n%d issue(s) found across %d file(s)\n", totalIssues, len(results)))
+	sb.WriteString(fmt.Sprintf("\n%d issue(s) found across %d file(s)", totalIssues, len(results)))
+	if totalIssues > 0 {
+		sb.WriteString(" · ")
+		parts := make([]string, 0, len(severityCounts))
+		for _, sev := range []string{"BUG", "SECURITY", "PERFORMANCE"} {
+			if n := severityCounts[sev]; n > 0 {
+				parts = append(parts, fmt.Sprintf("%d %s", n, strings.ToLower(sev)))
+			}
+		}
+		// Append any unknown severities at the end.
+		for sev, n := range severityCounts {
+			known := sev == "BUG" || sev == "SECURITY" || sev == "PERFORMANCE"
+			if !known {
+				parts = append(parts, fmt.Sprintf("%d %s", n, strings.ToLower(sev)))
+			}
+		}
+		sb.WriteString(strings.Join(parts, " · "))
+	}
+	sb.WriteString("\n")
 	return sb.String()
 }
 
