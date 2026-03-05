@@ -37,17 +37,15 @@ func init() {
 }
 
 func runReview(cmd *cobra.Command, args []string) error {
-	// Cancel in-flight requests on Ctrl-C.
+	// Cancel in-flight Bedrock requests on Ctrl-C.
 	ctx, cancel := signal.NotifyContext(cmd.Context(), os.Interrupt)
 	defer cancel()
 
-	// Load config from repo root (current directory).
 	cfg, err := config.LoadConfig(".")
 	if err != nil {
 		return fmt.Errorf("loading config: %w", err)
 	}
 
-	// Get diff.
 	chunks, err := git.GetDiff(flagTarget)
 	if err != nil {
 		if errors.Is(err, git.ErrNotGitRepo) {
@@ -61,14 +59,12 @@ func runReview(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("getting diff: %w", err)
 	}
 
-	// Apply ignore patterns from config.
 	chunks = git.FilterChunks(chunks, cfg.Ignore)
 	if len(chunks) == 0 {
 		fmt.Println("All changed files are ignored by .coderev.yaml — nothing to review.")
 		return nil
 	}
 
-	// Truncate oversized chunks and warn.
 	for i, chunk := range chunks {
 		truncated, warning := git.TruncateChunk(chunk)
 		chunks[i] = truncated
@@ -77,7 +73,6 @@ func runReview(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Build the Bedrock client.
 	var client bedrock.Client
 	if flagMock {
 		client = &bedrock.MockClient{Response: "[NITPICK] L1 Mock review: looks good"}
@@ -88,10 +83,9 @@ func runReview(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Print progress header.
 	fmt.Fprintf(os.Stderr, "Reviewing %d file(s) with model %s...\n", len(chunks), cfg.Model)
 
-	// Run parallel review (tokens stream live to terminal as they arrive).
+	// Tokens stream live to stderr as each file is reviewed in parallel.
 	results, err := reviewer.RunReview(ctx, chunks, cfg, client)
 	if err != nil {
 		if errors.Is(err, context.Canceled) {
@@ -101,7 +95,6 @@ func runReview(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("review failed: %w", err)
 	}
 
-	// Print structured summary (or JSON).
 	if flagJSON {
 		out, err := output.FormatJSON(results)
 		if err != nil {

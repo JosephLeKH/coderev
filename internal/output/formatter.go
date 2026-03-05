@@ -63,7 +63,7 @@ func FormatTerminal(results []FileResult) string {
 	totalIssues := 0
 
 	for _, r := range results {
-		sb.WriteString(fmt.Sprintf("\n\033[1m%s\033[0m\n", r.File)) // bold filename
+		sb.WriteString(fmt.Sprintf("\n\033[1m%s\033[0m\n", r.File))
 		if len(r.Comments) == 0 {
 			sb.WriteString("  ✓ No issues found\n")
 			continue

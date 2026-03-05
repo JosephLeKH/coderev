@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -18,8 +19,6 @@ type Client interface {
 	ReviewFile(ctx context.Context, prompt string, onToken func(string)) error
 }
 
-// ─── Real Bedrock Client ──────────────────────────────────────────────────────
-
 // RealClient sends requests to AWS Bedrock using InvokeModelWithResponseStream.
 type RealClient struct {
 	client  *bedrockruntime.Client
@@ -28,7 +27,6 @@ type RealClient struct {
 
 // NewRealClient creates a RealClient using the AWS default credential chain.
 // region overrides the configured region when non-empty.
-// Returns a clear error if credentials are not configured.
 func NewRealClient(ctx context.Context, modelID, region string) (*RealClient, error) {
 	opts := []func(*awsconfig.LoadOptions) error{}
 	if region != "" {
@@ -36,10 +34,7 @@ func NewRealClient(ctx context.Context, modelID, region string) (*RealClient, er
 	}
 	cfg, err := awsconfig.LoadDefaultConfig(ctx, opts...)
 	if err != nil {
-		return nil, fmt.Errorf(
-			"loading AWS config: %w. See: https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html",
-			err,
-		)
+		return nil, fmt.Errorf("loading AWS config: %w", err)
 	}
 	return &RealClient{
 		client:  bedrockruntime.NewFromConfig(cfg),
@@ -91,7 +86,7 @@ func (c *RealClient) ReviewFile(ctx context.Context, prompt string, onToken func
 		if !isThrottlingError(err) || attempt == maxRetries {
 			return err
 		}
-		fmt.Printf("\nRate limited by Bedrock — retrying in %s...\n", backoff)
+		fmt.Fprintf(os.Stderr, "\nRate limited by Bedrock — retrying in %s...\n", backoff)
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
@@ -141,17 +136,12 @@ func isThrottlingError(err error) bool {
 		strings.Contains(msg, "too many requests")
 }
 
-// ─── Mock Client ──────────────────────────────────────────────────────────────
-
-// MockClient returns canned responses without any AWS calls. For testing only.
+// MockClient returns canned responses without any AWS calls.
 type MockClient struct {
-	// Response is the full text delivered token-by-token (word by word).
-	Response string
-	// Err is returned instead of streaming a response.
-	Err error
+	Response string // full text, delivered word-by-word to simulate streaming
+	Err      error  // if non-nil, returned instead of streaming
 }
 
-// ReviewFile simulates streaming by calling onToken for each word in Response.
 func (m *MockClient) ReviewFile(_ context.Context, _ string, onToken func(string)) error {
 	if m.Err != nil {
 		return m.Err

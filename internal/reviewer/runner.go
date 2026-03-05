@@ -41,20 +41,15 @@ func RunReview(ctx context.Context, chunks []git.FileChunk, cfg *config.Config, 
 			p := prompt.BuildPrompt(fc, cfg)
 			var rawBuilder strings.Builder
 
-			// Print the file header, then stream tokens live as they arrive.
-			printMu.Lock()
-			fmt.Fprintf(os.Stderr, "\n\033[1m▶ %s\033[0m\n", fc.Filename)
-			printMu.Unlock()
-
 			err := client.ReviewFile(ctx, p, func(token string) {
 				rawBuilder.WriteString(token)
-				printMu.Lock()
-				fmt.Fprint(os.Stderr, token)
-				printMu.Unlock()
 			})
-			// Ensure we end on a newline after streaming.
+
+			// Print the entire file's output atomically so parallel goroutines don't interleave.
 			printMu.Lock()
-			fmt.Println()
+			fmt.Fprintf(os.Stderr, "\n\033[1m▶ %s\033[0m\n", fc.Filename)
+			fmt.Fprint(os.Stderr, rawBuilder.String())
+			fmt.Fprintln(os.Stderr)
 			printMu.Unlock()
 
 			if err != nil {
@@ -75,7 +70,6 @@ func RunReview(ctx context.Context, chunks []git.FileChunk, cfg *config.Config, 
 
 	wg.Wait()
 
-	// Collect in order; return first error encountered.
 	fileResults := make([]output.FileResult, 0, len(chunks))
 	for _, r := range results {
 		if r.err != nil {

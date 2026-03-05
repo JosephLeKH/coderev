@@ -24,7 +24,12 @@ func BuildPrompt(chunk git.FileChunk, cfg *config.Config) string {
 	sb.WriteString("  [SEVERITY] L<line_number> <short description>\n\n")
 	sb.WriteString("Valid severities: [BUG] [SECURITY] [PERFORMANCE] [STYLE] [NITPICK]\n\n")
 	sb.WriteString("Rules:\n")
-	sb.WriteString("- Only report real issues — do not invent problems.\n")
+	sb.WriteString("- Only report a finding if you are confident it is a problem. If you are unsure, say nothing.\n")
+	sb.WriteString("- Do not flag improvements. If a change adds documentation, improves naming, removes dead code,\n")
+	sb.WriteString("  or is clearly a cleanup, do not report it — even as NITPICK.\n")
+	sb.WriteString("- Do not speculate about intent. If a change could be correct or incorrect depending on context\n")
+	sb.WriteString("  you do not have, say nothing.\n")
+	sb.WriteString("- Do not describe what the diff does. Only report actual defects.\n")
 	sb.WriteString("- Use the line number of the added (+) or removed (-) line in the diff.\n")
 	sb.WriteString("- If there are no issues, output nothing.\n\n")
 

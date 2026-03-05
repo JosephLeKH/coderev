@@ -112,7 +112,6 @@ func FilterChunks(chunks []FileChunk, ignorePatterns []string) []FileChunk {
 		return chunks
 	}
 
-	// Pre-compile globs once
 	globs := make([]glob.Glob, 0, len(ignorePatterns))
 	for _, pattern := range ignorePatterns {
 		g, err := glob.Compile(pattern, '/')
